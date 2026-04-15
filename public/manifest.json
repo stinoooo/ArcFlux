@@ -1,0 +1,27 @@
+{
+  "name": "Flux by Arcnode",
+  "short_name": "Flux",
+  "description": "Real-time color tracking & physics simulation for projection mapping",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#121213",
+  "theme_color": "#6366f1",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["utilities", "entertainment"],
+  "screenshots": [],
+  "prefer_related_applications": false
+}
