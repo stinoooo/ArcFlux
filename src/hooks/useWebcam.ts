@@ -5,7 +5,7 @@ import { useFluxStore } from '@/store/useFluxStore'
 import { getWebcamConstraints } from '@/lib/utils'
 
 interface UseWebcamResult {
-  videoRef: React.RefObject<HTMLVideoElement>
+  videoRef: React.RefObject<HTMLVideoElement | null>
   startWebcam: () => Promise<void>
   stopWebcam: () => void
   switchCamera: (deviceId: string) => Promise<void>
@@ -144,7 +144,7 @@ export function useWebcam(): UseWebcamResult {
   }, [refreshCameras])
 
   return {
-    videoRef: videoRef as React.RefObject<HTMLVideoElement>,
+    videoRef,
     startWebcam,
     stopWebcam,
     switchCamera,

@@ -114,36 +114,69 @@ export function useOpenCV(): UseOpenCVResult {
   // Load OpenCV
   useEffect(() => {
     if (loadingRef.current || typeof window === 'undefined') return
-    if (window.cv && window.cv.Mat) {
+
+    // Check if already loaded
+    if (window.cv && typeof window.cv.Mat === 'function') {
+      console.log('OpenCV already loaded')
       setIsReady(true)
       setOpencvReady(true)
       return
     }
 
     loadingRef.current = true
+    console.log('Loading OpenCV.js...')
 
     const script = document.createElement('script')
     script.src = 'https://docs.opencv.org/4.8.0/opencv.js'
     script.async = true
 
     script.onload = () => {
-      // OpenCV.js uses Module.onRuntimeInitialized
-      if (window.cv && window.cv.Mat) {
-        setIsReady(true)
-        setOpencvReady(true)
-      } else {
-        // Wait for WASM to initialize
-        const checkReady = setInterval(() => {
-          if (window.cv && window.cv.Mat) {
-            clearInterval(checkReady)
+      console.log('OpenCV script loaded, waiting for WASM...')
+
+      // OpenCV.js returns a promise or uses onRuntimeInitialized
+      const waitForOpenCV = () => {
+        // Check if cv is a promise (newer OpenCV.js versions)
+        const cvObj = window.cv as unknown as Record<string, unknown>
+        if (cvObj && typeof cvObj['then'] === 'function') {
+          const cvPromise = window.cv as unknown as Promise<typeof window.cv>
+          cvPromise.then((cvInstance) => {
+            window.cv = cvInstance
+            console.log('OpenCV ready (promise)')
             setIsReady(true)
             setOpencvReady(true)
-          }
-        }, 100)
+          })
+        } else if (window.cv && typeof window.cv.Mat === 'function') {
+          // Already ready
+          console.log('OpenCV ready (immediate)')
+          setIsReady(true)
+          setOpencvReady(true)
+        } else {
+          // Poll for readiness
+          let attempts = 0
+          const maxAttempts = 300 // 30 seconds at 100ms intervals
 
-        // Timeout after 30 seconds
-        setTimeout(() => clearInterval(checkReady), 30000)
+          const checkReady = setInterval(() => {
+            attempts++
+
+            if (window.cv && typeof window.cv.Mat === 'function') {
+              console.log('OpenCV ready (polling)')
+              clearInterval(checkReady)
+              setIsReady(true)
+              setOpencvReady(true)
+            } else if (attempts >= maxAttempts) {
+              console.error('OpenCV failed to load after 30 seconds')
+              clearInterval(checkReady)
+            }
+          }, 100)
+        }
       }
+
+      waitForOpenCV()
+    }
+
+    script.onerror = () => {
+      console.error('Failed to load OpenCV.js script')
+      loadingRef.current = false
     }
 
     document.head.appendChild(script)

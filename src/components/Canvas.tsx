@@ -5,15 +5,15 @@ import { useFluxStore } from '@/store/useFluxStore'
 import { cn } from '@/lib/utils'
 
 interface CanvasProps {
-  videoRef: React.RefObject<HTMLVideoElement>
-  physicsCanvasRef: React.RefObject<HTMLCanvasElement>
+  videoRef: React.RefObject<HTMLVideoElement | null>
+  physicsCanvasRef: React.RefObject<HTMLCanvasElement | null>
   onResize?: (width: number, height: number) => void
 }
 
 export function Canvas({ videoRef, physicsCanvasRef, onResize }: CanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const backgroundCanvasRef = useRef<HTMLCanvasElement>(null)
-  const animationFrameRef = useRef<number>()
+  const animationFrameRef = useRef<number | undefined>(undefined)
 
   const {
     isStreaming,
