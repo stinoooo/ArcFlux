@@ -1,8 +1,8 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 @layer base {
   :root {
@@ -11,10 +11,11 @@
     --tornado-cloud: #121213;
     --young-night: #232323;
     --stout: #0F0B0A;
-    --arc-primary: #6366f1;
-    --arc-secondary: #8b5cf6;
-    --arc-accent: #a855f7;
-    --arc-glow: #c084fc;
+    --arc-primary: #14B8A6;
+    --arc-secondary: #0D9488;
+    --arc-accent: #2DD4BF;
+    --arc-glow: #5EEAD4;
+    --arc-deep: #0F766E;
   }
 
   * {
@@ -72,9 +73,9 @@
   /* Arc Glow Effect */
   .arc-glow {
     box-shadow:
-      0 0 20px rgba(99, 102, 241, 0.3),
-      0 0 40px rgba(139, 92, 246, 0.2),
-      0 0 60px rgba(168, 85, 247, 0.1);
+      0 0 20px rgba(20, 184, 166, 0.3),
+      0 0 40px rgba(13, 148, 136, 0.2),
+      0 0 60px rgba(45, 212, 191, 0.1);
   }
 
   /* Button Base */
@@ -86,12 +87,12 @@
   .btn-primary {
     @apply btn text-white;
     background: linear-gradient(135deg, var(--arc-primary) 0%, var(--arc-secondary) 100%);
-    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+    box-shadow: 0 4px 15px rgba(20, 184, 166, 0.4);
   }
 
   .btn-primary:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5);
+    box-shadow: 0 6px 20px rgba(20, 184, 166, 0.5);
   }
 
   .btn-primary:active {
@@ -135,19 +136,19 @@
   .slider::-webkit-slider-thumb {
     @apply appearance-none w-4 h-4 rounded-full cursor-pointer;
     background: linear-gradient(135deg, var(--arc-primary) 0%, var(--arc-secondary) 100%);
-    box-shadow: 0 0 10px rgba(99, 102, 241, 0.6);
+    box-shadow: 0 0 10px rgba(20, 184, 166, 0.6);
     transition: transform 0.15s ease, box-shadow 0.15s ease;
   }
 
   .slider::-webkit-slider-thumb:hover {
     transform: scale(1.15);
-    box-shadow: 0 0 15px rgba(99, 102, 241, 0.8);
+    box-shadow: 0 0 15px rgba(20, 184, 166, 0.8);
   }
 
   .slider::-moz-range-thumb {
     @apply w-4 h-4 rounded-full border-0 cursor-pointer;
     background: linear-gradient(135deg, var(--arc-primary) 0%, var(--arc-secondary) 100%);
-    box-shadow: 0 0 10px rgba(99, 102, 241, 0.6);
+    box-shadow: 0 0 10px rgba(20, 184, 166, 0.6);
   }
 
   /* Section Headers */
@@ -279,10 +280,10 @@
 
   @keyframes pulse-ring {
     0%, 100% {
-      box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4);
+      box-shadow: 0 0 0 0 rgba(20, 184, 166, 0.4);
     }
     50% {
-      box-shadow: 0 0 0 8px rgba(99, 102, 241, 0);
+      box-shadow: 0 0 0 8px rgba(20, 184, 166, 0);
     }
   }
 }

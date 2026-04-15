@@ -110,8 +110,8 @@ export function CalibrationOverlay({ onClose }: CalibrationOverlayProps) {
         <svg className="absolute inset-0 w-full h-full pointer-events-none">
           <defs>
             <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#6366f1" />
-              <stop offset="100%" stopColor="#a855f7" />
+              <stop offset="0%" stopColor="#14B8A6" />
+              <stop offset="100%" stopColor="#2DD4BF" />
             </linearGradient>
           </defs>
           <polygon

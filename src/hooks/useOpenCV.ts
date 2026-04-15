@@ -4,77 +4,69 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { useFluxStore } from '@/store/useFluxStore'
 import { hexToHsv } from '@/lib/utils'
 
+// OpenCV types
 declare global {
   interface Window {
-    cv: typeof cv
-    Module: {
-      onRuntimeInitialized: () => void
-    }
+    cv: OpenCVModule | (() => Promise<OpenCVModule>)
   }
-  namespace cv {
-    class Mat {
-      constructor()
-      constructor(rows: number, cols: number, type: number)
-      constructor(rows: number, cols: number, type: number, scalar: Scalar)
-      delete(): void
-      data: Uint8Array
-      rows: number
-      cols: number
-      size(): { width: number; height: number }
-    }
-    class MatVector {
-      constructor()
-      size(): number
-      get(index: number): Mat
-      delete(): void
-    }
-    class Scalar {
-      constructor(v0: number, v1: number, v2: number, v3?: number)
-    }
-    class Point {
-      constructor(x: number, y: number)
-      x: number
-      y: number
-    }
-    class Size {
-      constructor(width: number, height: number)
-    }
-    class Rect {
-      x: number
-      y: number
-      width: number
-      height: number
-    }
-    function imread(canvas: HTMLCanvasElement): Mat
-    function imshow(canvas: HTMLCanvasElement, mat: Mat): void
-    function cvtColor(src: Mat, dst: Mat, code: number): void
-    function inRange(src: Mat, lowerb: Mat, upperb: Mat, dst: Mat): void
-    function morphologyEx(src: Mat, dst: Mat, op: number, kernel: Mat): void
-    function getStructuringElement(shape: number, ksize: Size): Mat
-    function findContours(image: Mat, contours: MatVector, hierarchy: Mat, mode: number, method: number): void
-    function boundingRect(contour: Mat): Rect
-    function contourArea(contour: Mat): number
-    function getPerspectiveTransform(src: Mat, dst: Mat): Mat
-    function warpPerspective(src: Mat, dst: Mat, M: Mat, dsize: Size): void
-    function matFromArray(rows: number, cols: number, type: number, array: number[]): Mat
-    function resize(src: Mat, dst: Mat, dsize: Size, fx?: number, fy?: number, interpolation?: number): void
-    function bitwise_or(src1: Mat, src2: Mat, dst: Mat): void
-    function bitwise_and(src1: Mat, src2: Mat, dst: Mat): void
-    function bitwise_not(src: Mat, dst: Mat): void
-    const CV_8UC1: number
-    const CV_8UC3: number
-    const CV_8UC4: number
-    const CV_32FC1: number
-    const CV_32FC2: number
-    const COLOR_RGBA2RGB: number
-    const COLOR_RGB2HSV: number
-    const MORPH_OPEN: number
-    const MORPH_CLOSE: number
-    const MORPH_ELLIPSE: number
-    const RETR_EXTERNAL: number
-    const CHAIN_APPROX_SIMPLE: number
-    const INTER_LINEAR: number
-  }
+}
+
+interface OpenCVModule {
+  Mat: new () => CVMat
+  MatVector: new () => CVMatVector
+  Size: new (width: number, height: number) => CVSize
+  Scalar: new (v0: number, v1: number, v2: number, v3?: number) => CVScalar
+  imread: (canvas: HTMLCanvasElement) => CVMat
+  imshow: (canvas: HTMLCanvasElement, mat: CVMat) => void
+  cvtColor: (src: CVMat, dst: CVMat, code: number) => void
+  inRange: (src: CVMat, lowerb: CVMat, upperb: CVMat, dst: CVMat) => void
+  morphologyEx: (src: CVMat, dst: CVMat, op: number, kernel: CVMat) => void
+  getStructuringElement: (shape: number, ksize: CVSize) => CVMat
+  findContours: (image: CVMat, contours: CVMatVector, hierarchy: CVMat, mode: number, method: number) => void
+  boundingRect: (contour: CVMat) => CVRect
+  contourArea: (contour: CVMat) => number
+  getPerspectiveTransform: (src: CVMat, dst: CVMat) => CVMat
+  warpPerspective: (src: CVMat, dst: CVMat, M: CVMat, dsize: CVSize) => void
+  matFromArray: (rows: number, cols: number, type: number, array: number[]) => CVMat
+  bitwise_or: (src1: CVMat, src2: CVMat, dst: CVMat) => void
+  CV_8UC1: number
+  CV_32FC2: number
+  COLOR_RGBA2RGB: number
+  COLOR_RGB2HSV: number
+  MORPH_OPEN: number
+  MORPH_CLOSE: number
+  MORPH_ELLIPSE: number
+  RETR_EXTERNAL: number
+  CHAIN_APPROX_SIMPLE: number
+}
+
+interface CVMat {
+  delete: () => void
+  data: Uint8Array
+  rows: number
+  cols: number
+}
+
+interface CVMatVector {
+  size: () => number
+  get: (index: number) => CVMat
+  delete: () => void
+}
+
+interface CVSize {
+  width: number
+  height: number
+}
+
+interface CVScalar {
+  [index: number]: number
+}
+
+interface CVRect {
+  x: number
+  y: number
+  width: number
+  height: number
 }
 
 interface DetectedBlock {
@@ -92,98 +84,88 @@ interface UseOpenCVResult {
     inputCanvas: HTMLCanvasElement,
     outputCanvas: HTMLCanvasElement
   ) => DetectedBlock[]
-  applyPerspectiveTransform: (
-    inputCanvas: HTMLCanvasElement,
-    outputCanvas: HTMLCanvasElement
-  ) => void
 }
+
+// Store the resolved cv module
+let cvModule: OpenCVModule | null = null
 
 export function useOpenCV(): UseOpenCVResult {
   const [isReady, setIsReady] = useState(false)
-  const loadingRef = useRef(false)
+  const initRef = useRef(false)
 
   const {
     targetColor,
     colorTolerance,
     saturationMin,
     valueMin,
-    calibrationPoints,
     setOpencvReady,
   } = useFluxStore()
 
-  // Load OpenCV
   useEffect(() => {
-    if (loadingRef.current || typeof window === 'undefined') return
-
-    // Check if already loaded
-    if (window.cv && typeof window.cv.Mat === 'function') {
-      console.log('OpenCV already loaded')
+    if (typeof window === 'undefined') return
+    if (initRef.current) return
+    if (cvModule) {
       setIsReady(true)
       setOpencvReady(true)
       return
     }
 
-    loadingRef.current = true
-    console.log('Loading OpenCV.js...')
+    initRef.current = true
 
-    const script = document.createElement('script')
-    script.src = 'https://docs.opencv.org/4.8.0/opencv.js'
-    script.async = true
-
-    script.onload = () => {
-      console.log('OpenCV script loaded, waiting for WASM...')
-
-      // OpenCV.js returns a promise or uses onRuntimeInitialized
-      const waitForOpenCV = () => {
-        // Check if cv is a promise (newer OpenCV.js versions)
-        const cvObj = window.cv as unknown as Record<string, unknown>
-        if (cvObj && typeof cvObj['then'] === 'function') {
-          const cvPromise = window.cv as unknown as Promise<typeof window.cv>
-          cvPromise.then((cvInstance) => {
-            window.cv = cvInstance
-            console.log('OpenCV ready (promise)')
-            setIsReady(true)
-            setOpencvReady(true)
-          })
-        } else if (window.cv && typeof window.cv.Mat === 'function') {
-          // Already ready
-          console.log('OpenCV ready (immediate)')
-          setIsReady(true)
-          setOpencvReady(true)
-        } else {
-          // Poll for readiness
-          let attempts = 0
-          const maxAttempts = 300 // 30 seconds at 100ms intervals
-
-          const checkReady = setInterval(() => {
-            attempts++
-
-            if (window.cv && typeof window.cv.Mat === 'function') {
-              console.log('OpenCV ready (polling)')
-              clearInterval(checkReady)
-              setIsReady(true)
-              setOpencvReady(true)
-            } else if (attempts >= maxAttempts) {
-              console.error('OpenCV failed to load after 30 seconds')
-              clearInterval(checkReady)
-            }
-          }, 100)
-        }
+    const initOpenCV = async () => {
+      // Wait for cv to be defined
+      let attempts = 0
+      while (!window.cv && attempts < 100) {
+        await new Promise(r => setTimeout(r, 100))
+        attempts++
       }
 
-      waitForOpenCV()
+      if (!window.cv) {
+        console.error('OpenCV not found after waiting')
+        return
+      }
+
+      console.log('cv object found, type:', typeof window.cv)
+
+      try {
+        // OpenCV.js 4.x: cv is a function that returns a promise
+        if (typeof window.cv === 'function') {
+          console.log('Initializing OpenCV (function mode)...')
+          cvModule = await (window.cv as () => Promise<OpenCVModule>)()
+          console.log('OpenCV initialized!')
+        }
+        // Older versions: cv is already the module
+        else if (typeof (window.cv as OpenCVModule).Mat === 'function') {
+          console.log('OpenCV already initialized (direct mode)')
+          cvModule = window.cv as OpenCVModule
+        }
+        // cv exists but Mat doesn't - wait for it
+        else {
+          console.log('Waiting for OpenCV Mat to be available...')
+          let matAttempts = 0
+          while (!(window.cv as OpenCVModule).Mat && matAttempts < 100) {
+            await new Promise(r => setTimeout(r, 100))
+            matAttempts++
+          }
+          if ((window.cv as OpenCVModule).Mat) {
+            cvModule = window.cv as OpenCVModule
+            console.log('OpenCV ready after waiting for Mat')
+          }
+        }
+
+        if (cvModule) {
+          setIsReady(true)
+          setOpencvReady(true)
+          console.log('OpenCV is ready to use!')
+        } else {
+          console.error('Failed to initialize OpenCV module')
+        }
+      } catch (error) {
+        console.error('Error initializing OpenCV:', error)
+      }
     }
 
-    script.onerror = () => {
-      console.error('Failed to load OpenCV.js script')
-      loadingRef.current = false
-    }
-
-    document.head.appendChild(script)
-
-    return () => {
-      loadingRef.current = false
-    }
+    initOpenCV()
   }, [setOpencvReady])
 
   const processFrame = useCallback(
@@ -192,23 +174,23 @@ export function useOpenCV(): UseOpenCVResult {
       inputCanvas: HTMLCanvasElement,
       outputCanvas: HTMLCanvasElement
     ): DetectedBlock[] => {
-      if (!isReady || !window.cv) return []
+      if (!isReady || !cvModule) return []
 
-      const cv = window.cv
+      const cv = cvModule
       const detectedBlocks: DetectedBlock[] = []
 
-      let src: cv.Mat | null = null
-      let rgb: cv.Mat | null = null
-      let hsv: cv.Mat | null = null
-      let mask: cv.Mat | null = null
-      let kernel: cv.Mat | null = null
-      let hierarchy: cv.Mat | null = null
-      let contours: cv.MatVector | null = null
-      let lowerBound: cv.Mat | null = null
-      let upperBound: cv.Mat | null = null
+      let src: CVMat | null = null
+      let rgb: CVMat | null = null
+      let hsv: CVMat | null = null
+      let mask: CVMat | null = null
+      let mask2: CVMat | null = null
+      let kernel: CVMat | null = null
+      let hierarchy: CVMat | null = null
+      let contours: CVMatVector | null = null
+      let lowerBound: CVMat | null = null
+      let upperBound: CVMat | null = null
 
       try {
-        // Draw video to input canvas
         const ctx = inputCanvas.getContext('2d', { willReadFrequently: true })
         if (!ctx) return []
 
@@ -216,24 +198,18 @@ export function useOpenCV(): UseOpenCVResult {
         inputCanvas.height = video.videoHeight || 480
         ctx.drawImage(video, 0, 0)
 
-        // Read from canvas
         src = cv.imread(inputCanvas)
         rgb = new cv.Mat()
         hsv = new cv.Mat()
         mask = new cv.Mat()
 
-        // Convert to RGB then HSV
         cv.cvtColor(src, rgb, cv.COLOR_RGBA2RGB)
         cv.cvtColor(rgb, hsv, cv.COLOR_RGB2HSV)
 
-        // Get target HSV values
         const targetHsv = hexToHsv(targetColor)
+        const hLow = targetHsv.h - colorTolerance
+        const hHigh = targetHsv.h + colorTolerance
 
-        // Calculate hue range (wrap around for red)
-        let hLow = targetHsv.h - colorTolerance
-        let hHigh = targetHsv.h + colorTolerance
-
-        // Create bounds
         lowerBound = cv.matFromArray(1, 3, cv.CV_8UC1, [
           Math.max(0, hLow),
           saturationMin,
@@ -245,63 +221,45 @@ export function useOpenCV(): UseOpenCVResult {
           255,
         ])
 
-        // Apply color threshold
         cv.inRange(hsv, lowerBound, upperBound, mask)
 
         // Handle hue wrap-around for red colors
         if (hLow < 0 || hHigh > 179) {
-          const mask2 = new cv.Mat()
+          mask2 = new cv.Mat()
           if (hLow < 0) {
             const lb2 = cv.matFromArray(1, 3, cv.CV_8UC1, [179 + hLow, saturationMin, valueMin])
             const ub2 = cv.matFromArray(1, 3, cv.CV_8UC1, [179, 255, 255])
             cv.inRange(hsv, lb2, ub2, mask2)
             lb2.delete()
             ub2.delete()
-          }
-          if (hHigh > 179) {
+          } else if (hHigh > 179) {
             const lb2 = cv.matFromArray(1, 3, cv.CV_8UC1, [0, saturationMin, valueMin])
             const ub2 = cv.matFromArray(1, 3, cv.CV_8UC1, [hHigh - 179, 255, 255])
             cv.inRange(hsv, lb2, ub2, mask2)
             lb2.delete()
             ub2.delete()
           }
-          // Combine masks with OR operation
           const combined = new cv.Mat()
           cv.bitwise_or(mask, mask2, combined)
           mask.delete()
           mask = combined
-          mask2.delete()
         }
 
-        // Morphological operations to reduce noise
-        kernel = cv.getStructuringElement(
-          cv.MORPH_ELLIPSE,
-          new cv.Size(5, 5)
-        )
+        kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, new cv.Size(5, 5))
         cv.morphologyEx(mask, mask, cv.MORPH_OPEN, kernel)
         cv.morphologyEx(mask, mask, cv.MORPH_CLOSE, kernel)
 
-        // Find contours
         contours = new cv.MatVector()
         hierarchy = new cv.Mat()
-        cv.findContours(
-          mask,
-          contours,
-          hierarchy,
-          cv.RETR_EXTERNAL,
-          cv.CHAIN_APPROX_SIMPLE
-        )
+        cv.findContours(mask, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
 
-        // Process contours
-        const minArea = 500 // Minimum contour area
+        const minArea = 500
         for (let i = 0; i < contours.size(); i++) {
           const contour = contours.get(i)
           const area = cv.contourArea(contour)
 
           if (area >= minArea) {
             const rect = cv.boundingRect(contour)
-
-            // Scale to output canvas dimensions
             const scaleX = outputCanvas.width / inputCanvas.width
             const scaleY = outputCanvas.height / inputCanvas.height
 
@@ -317,11 +275,11 @@ export function useOpenCV(): UseOpenCVResult {
       } catch (error) {
         console.error('OpenCV processing error:', error)
       } finally {
-        // Clean up
         src?.delete()
         rgb?.delete()
         hsv?.delete()
         mask?.delete()
+        mask2?.delete()
         kernel?.delete()
         hierarchy?.delete()
         contours?.delete()
@@ -334,64 +292,8 @@ export function useOpenCV(): UseOpenCVResult {
     [isReady, targetColor, colorTolerance, saturationMin, valueMin]
   )
 
-  const applyPerspectiveTransform = useCallback(
-    (inputCanvas: HTMLCanvasElement, outputCanvas: HTMLCanvasElement) => {
-      if (!isReady || !window.cv) return
-
-      const cv = window.cv
-      let src: cv.Mat | null = null
-      let dst: cv.Mat | null = null
-      let srcPts: cv.Mat | null = null
-      let dstPts: cv.Mat | null = null
-      let M: cv.Mat | null = null
-
-      try {
-        src = cv.imread(inputCanvas)
-
-        // Source points from calibration
-        const srcPoints = calibrationPoints.map((p) => [
-          (p.x / 100) * inputCanvas.width,
-          (p.y / 100) * inputCanvas.height,
-        ]).flat()
-
-        // Destination points (full canvas corners)
-        const dstPoints = [
-          0, 0,
-          outputCanvas.width, 0,
-          outputCanvas.width, outputCanvas.height,
-          0, outputCanvas.height,
-        ]
-
-        srcPts = cv.matFromArray(4, 1, cv.CV_32FC2, srcPoints)
-        dstPts = cv.matFromArray(4, 1, cv.CV_32FC2, dstPoints)
-
-        M = cv.getPerspectiveTransform(srcPts, dstPts)
-
-        dst = new cv.Mat()
-        cv.warpPerspective(
-          src,
-          dst,
-          M,
-          new cv.Size(outputCanvas.width, outputCanvas.height)
-        )
-
-        cv.imshow(outputCanvas, dst)
-      } catch (error) {
-        console.error('Perspective transform error:', error)
-      } finally {
-        src?.delete()
-        dst?.delete()
-        srcPts?.delete()
-        dstPts?.delete()
-        M?.delete()
-      }
-    },
-    [isReady, calibrationPoints]
-  )
-
   return {
     isReady,
     processFrame,
-    applyPerspectiveTransform,
   }
 }

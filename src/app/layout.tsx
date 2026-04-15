@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next'
+import { OpenCVLoader } from '@/components/OpenCVLoader'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -52,6 +53,8 @@ export default function RootLayout({
         {/* Noise texture overlay */}
         <div className="noise-overlay" aria-hidden="true" />
         {children}
+        {/* Load OpenCV.js */}
+        <OpenCVLoader />
       </body>
     </html>
   )

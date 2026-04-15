@@ -15,6 +15,7 @@ interface SelectProps {
   placeholder?: string
   label?: string
   className?: string
+  id?: string
 }
 
 export function Select({
@@ -24,16 +25,21 @@ export function Select({
   placeholder = 'Select...',
   label,
   className,
+  id,
 }: SelectProps) {
+  const selectId = id || `select-${label?.toLowerCase().replace(/\s+/g, '-') || 'input'}`
+
   return (
     <div className={cn('control-group', className)}>
       {label && (
         <div className="control-label">
-          <span>{label}</span>
+          <label htmlFor={selectId}>{label}</label>
         </div>
       )}
       <div className="relative">
         <select
+          id={selectId}
+          name={selectId}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           className={cn(

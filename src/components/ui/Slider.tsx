@@ -12,6 +12,7 @@ interface SliderProps {
   showValue?: boolean
   formatValue?: (value: number) => string
   className?: string
+  id?: string
 }
 
 export function Slider({
@@ -24,7 +25,9 @@ export function Slider({
   showValue = true,
   formatValue = (v) => v.toString(),
   className,
+  id,
 }: SliderProps) {
+  const inputId = id || `slider-${label?.toLowerCase().replace(/\s+/g, '-') || 'input'}`
   const percentage = ((value - min) / (max - min)) * 100
 
   return (
@@ -38,6 +41,8 @@ export function Slider({
       <div className="relative">
         <input
           type="range"
+          id={inputId}
+          name={inputId}
           min={min}
           max={max}
           step={step}
@@ -45,7 +50,7 @@ export function Slider({
           onChange={(e) => onChange(Number(e.target.value))}
           className="slider"
           style={{
-            background: `linear-gradient(to right, rgba(99, 102, 241, 0.6) 0%, rgba(139, 92, 246, 0.8) ${percentage}%, rgba(35, 35, 35, 0.8) ${percentage}%, rgba(35, 35, 35, 0.8) 100%)`,
+            background: `linear-gradient(to right, rgba(20, 184, 166, 0.6) 0%, rgba(13, 148, 136, 0.8) ${percentage}%, rgba(35, 35, 35, 0.8) ${percentage}%, rgba(35, 35, 35, 0.8) 100%)`,
           }}
         />
       </div>

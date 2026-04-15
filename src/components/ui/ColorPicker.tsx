@@ -9,6 +9,7 @@ interface ColorPickerProps {
   onChange: (color: string) => void
   label?: string
   className?: string
+  id?: string
 }
 
 export function ColorPicker({
@@ -16,7 +17,9 @@ export function ColorPicker({
   onChange,
   label,
   className,
+  id,
 }: ColorPickerProps) {
+  const inputId = id || `color-${label?.toLowerCase().replace(/\s+/g, '-') || 'picker'}`
   const [isOpen, setIsOpen] = useState(false)
 
   // Common colors for quick selection
@@ -44,6 +47,8 @@ export function ColorPicker({
         <div className="relative flex-1">
           <input
             type="color"
+            id={inputId}
+            name={inputId}
             value={value}
             onChange={(e) => onChange(e.target.value)}
             className="color-picker"

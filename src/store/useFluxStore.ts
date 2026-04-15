@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { persist, createJSONStorage } from 'zustand/middleware'
 
 export type SpawnMode = 'balls' | 'laser'
 
@@ -86,7 +86,7 @@ export interface FluxState {
 const defaultState = {
   isStreaming: false,
   selectedCamera: '',
-  availableCameras: [],
+  availableCameras: [] as MediaDeviceInfo[],
   videoRotation: 0,
   flipHorizontal: false,
   flipVertical: false,
@@ -122,67 +122,41 @@ const defaultState = {
   detectedBlocks: 0,
 }
 
-export const useFluxStore = create<FluxState>()(
-  persist(
-    (set) => ({
-      ...defaultState,
+// Create store without persist for now to avoid hydration issues
+export const useFluxStore = create<FluxState>()((set) => ({
+  ...defaultState,
 
-      setStreaming: (streaming) => set({ isStreaming: streaming }),
-      setSelectedCamera: (camera) => set({ selectedCamera: camera }),
-      setAvailableCameras: (cameras) => set({ availableCameras: cameras }),
-      setVideoRotation: (rotation) => set({ videoRotation: rotation }),
-      setFlipHorizontal: (flip) => set({ flipHorizontal: flip }),
-      setFlipVertical: (flip) => set({ flipVertical: flip }),
-      setWebcamQuality: (quality) => set({ webcamQuality: quality }),
+  setStreaming: (streaming) => set({ isStreaming: streaming }),
+  setSelectedCamera: (camera) => set({ selectedCamera: camera }),
+  setAvailableCameras: (cameras) => set({ availableCameras: cameras }),
+  setVideoRotation: (rotation) => set({ videoRotation: rotation }),
+  setFlipHorizontal: (flip) => set({ flipHorizontal: flip }),
+  setFlipVertical: (flip) => set({ flipVertical: flip }),
+  setWebcamQuality: (quality) => set({ webcamQuality: quality }),
 
-      setSpawnMode: (mode) => set({ spawnMode: mode }),
-      setSpawnInterval: (interval) => set({ spawnInterval: interval }),
-      setSpawnPositionX: (x) => set({ spawnPositionX: x }),
-      setBounciness: (bounciness) => set({ bounciness: bounciness }),
-      setGravity: (gravity) => set({ gravity: gravity }),
-      setBallSize: (size) => set({ ballSize: size }),
+  setSpawnMode: (mode) => set({ spawnMode: mode }),
+  setSpawnInterval: (interval) => set({ spawnInterval: interval }),
+  setSpawnPositionX: (x) => set({ spawnPositionX: x }),
+  setBounciness: (bounciness) => set({ bounciness: bounciness }),
+  setGravity: (gravity) => set({ gravity: gravity }),
+  setBallSize: (size) => set({ ballSize: size }),
 
-      setTargetColor: (color) => set({ targetColor: color }),
-      setColorTolerance: (tolerance) => set({ colorTolerance: tolerance }),
-      setSaturationMin: (saturation) => set({ saturationMin: saturation }),
-      setValueMin: (value) => set({ valueMin: value }),
-      setBoxOpacity: (opacity) => set({ boxOpacity: opacity }),
-      setShowDetection: (show) => set({ showDetection: show }),
+  setTargetColor: (color) => set({ targetColor: color }),
+  setColorTolerance: (tolerance) => set({ colorTolerance: tolerance }),
+  setSaturationMin: (saturation) => set({ saturationMin: saturation }),
+  setValueMin: (value) => set({ valueMin: value }),
+  setBoxOpacity: (opacity) => set({ boxOpacity: opacity }),
+  setShowDetection: (show) => set({ showDetection: show }),
 
-      setCalibrating: (calibrating) => set({ isCalibrating: calibrating }),
-      setCalibrationPoints: (points) => set({ calibrationPoints: points }),
+  setCalibrating: (calibrating) => set({ isCalibrating: calibrating }),
+  setCalibrationPoints: (points) => set({ calibrationPoints: points }),
 
-      setShowBackground: (show) => set({ showBackground: show }),
-      setShowUI: (show) => set({ showUI: show }),
+  setShowBackground: (show) => set({ showBackground: show }),
+  setShowUI: (show) => set({ showUI: show }),
 
-      setOpencvReady: (ready) => set({ opencvReady: ready }),
-      setFps: (fps) => set({ fps: fps }),
-      setDetectedBlocks: (blocks) => set({ detectedBlocks: blocks }),
+  setOpencvReady: (ready) => set({ opencvReady: ready }),
+  setFps: (fps) => set({ fps: fps }),
+  setDetectedBlocks: (blocks) => set({ detectedBlocks: blocks }),
 
-      resetSettings: () => set({ ...defaultState, availableCameras: [] }),
-    }),
-    {
-      name: 'flux-settings',
-      partialize: (state) => ({
-        videoRotation: state.videoRotation,
-        flipHorizontal: state.flipHorizontal,
-        flipVertical: state.flipVertical,
-        webcamQuality: state.webcamQuality,
-        spawnMode: state.spawnMode,
-        spawnInterval: state.spawnInterval,
-        spawnPositionX: state.spawnPositionX,
-        bounciness: state.bounciness,
-        gravity: state.gravity,
-        ballSize: state.ballSize,
-        targetColor: state.targetColor,
-        colorTolerance: state.colorTolerance,
-        saturationMin: state.saturationMin,
-        valueMin: state.valueMin,
-        boxOpacity: state.boxOpacity,
-        showDetection: state.showDetection,
-        calibrationPoints: state.calibrationPoints,
-        showBackground: state.showBackground,
-      }),
-    }
-  )
-)
+  resetSettings: () => set({ ...defaultState, availableCameras: [] }),
+}))

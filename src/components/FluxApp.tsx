@@ -11,10 +11,12 @@ import { CalibrationOverlay } from '@/components/CalibrationOverlay'
 
 export default function FluxApp() {
   const [showCalibration, setShowCalibration] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const physicsCanvasRef = useRef<HTMLCanvasElement>(null)
   const hiddenCanvasRef = useRef<HTMLCanvasElement | null>(null)
-  const fpsRef = useRef({ lastTime: 0, frameCount: 0 })
-  const processingRef = useRef(false)
+  const lastProcessTime = useRef(0)
+  const frameCount = useRef(0)
+  const lastFpsUpdate = useRef(0)
 
   const {
     isStreaming,
@@ -33,68 +35,73 @@ export default function FluxApp() {
     clearBalls,
   } = usePhysics()
 
-  // Initialize physics when canvas is ready
-  const handleCanvasResize = useCallback(
-    (width: number, height: number) => {
-      if (physicsCanvasRef.current && width > 0 && height > 0) {
-        initPhysics(physicsCanvasRef.current)
-      }
-    },
-    [initPhysics]
-  )
+  // Mount check
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
-  // Create hidden canvas for OpenCV processing
+  // Initialize physics
+  const handleCanvasResize = useCallback((width: number, height: number) => {
+    if (physicsCanvasRef.current && width > 0 && height > 0) {
+      initPhysics(physicsCanvasRef.current)
+    }
+  }, [initPhysics])
+
+  // Create hidden canvas
   useEffect(() => {
     if (!hiddenCanvasRef.current) {
-      const canvas = document.createElement('canvas')
-      canvas.width = 640
-      canvas.height = 480
-      hiddenCanvasRef.current = canvas
+      hiddenCanvasRef.current = document.createElement('canvas')
+      hiddenCanvasRef.current.width = 640
+      hiddenCanvasRef.current.height = 480
     }
   }, [])
 
-  // Enumerate cameras on mount
+  // Enumerate cameras
   useEffect(() => {
-    refreshCameras()
-  }, [refreshCameras])
+    if (mounted) {
+      refreshCameras()
+    }
+  }, [mounted, refreshCameras])
 
-  // Processing loop
+  // Processing loop - throttled to ~15fps for OpenCV
   useEffect(() => {
-    if (!isStreaming || !opencvReady || !physicsCanvasRef.current || !videoRef.current) {
+    if (!mounted || !isStreaming || !opencvReady || !physicsCanvasRef.current || !videoRef.current) {
       return
     }
 
     let animationFrameId: number
+    let running = true
 
     const processLoop = () => {
-      if (!processingRef.current && videoRef.current && hiddenCanvasRef.current && physicsCanvasRef.current) {
-        processingRef.current = true
+      if (!running) return
 
-        try {
-          // Process frame with OpenCV
-          const blocks = processFrame(
-            videoRef.current,
-            hiddenCanvasRef.current,
-            physicsCanvasRef.current
-          )
+      const now = performance.now()
 
-          // Update physics bodies
-          updateDetectedBlocks(blocks)
-          setDetectedBlocks(blocks.length)
+      // Throttle OpenCV processing to ~15fps (every 66ms)
+      if (now - lastProcessTime.current >= 66) {
+        lastProcessTime.current = now
 
-          // Calculate FPS
-          const now = performance.now()
-          fpsRef.current.frameCount++
-          if (now - fpsRef.current.lastTime >= 1000) {
-            setFps(fpsRef.current.frameCount)
-            fpsRef.current.frameCount = 0
-            fpsRef.current.lastTime = now
+        if (videoRef.current && hiddenCanvasRef.current && physicsCanvasRef.current) {
+          try {
+            const blocks = processFrame(
+              videoRef.current,
+              hiddenCanvasRef.current,
+              physicsCanvasRef.current
+            )
+            updateDetectedBlocks(blocks)
+            setDetectedBlocks(blocks.length)
+          } catch (err) {
+            console.error('Processing error:', err)
           }
-        } catch (err) {
-          console.error('Processing error:', err)
         }
+      }
 
-        processingRef.current = false
+      // Update FPS counter
+      frameCount.current++
+      if (now - lastFpsUpdate.current >= 1000) {
+        setFps(frameCount.current)
+        frameCount.current = 0
+        lastFpsUpdate.current = now
       }
 
       animationFrameId = requestAnimationFrame(processLoop)
@@ -103,17 +110,17 @@ export default function FluxApp() {
     animationFrameId = requestAnimationFrame(processLoop)
 
     return () => {
+      running = false
       cancelAnimationFrame(animationFrameId)
     }
-  }, [isStreaming, opencvReady, processFrame, updateDetectedBlocks, setDetectedBlocks, setFps, videoRef])
+  }, [mounted, isStreaming, opencvReady, processFrame, updateDetectedBlocks, setDetectedBlocks, setFps, videoRef])
 
   // Keyboard shortcuts
   useEffect(() => {
+    if (!mounted) return
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore if typing in an input
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
-        return
-      }
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
 
       switch (e.key.toLowerCase()) {
         case 'h':
@@ -123,22 +130,18 @@ export default function FluxApp() {
           setShowCalibration(true)
           break
         case 'escape':
-          if (showCalibration) {
-            setShowCalibration(false)
-          }
+          if (showCalibration) setShowCalibration(false)
           break
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [showUI, setShowUI, showCalibration])
+  }, [mounted, showUI, setShowUI, showCalibration])
 
-  // Cleanup on unmount
+  // Cleanup
   useEffect(() => {
-    return () => {
-      cleanupPhysics()
-    }
+    return () => cleanupPhysics()
   }, [cleanupPhysics])
 
   const handleStartWebcam = useCallback(async () => {
@@ -152,66 +155,35 @@ export default function FluxApp() {
   }, [stopWebcam, setDetectedBlocks, setFps])
 
   const handlePopout = useCallback(() => {
-    // Open controls in a new window
-    const popout = window.open(
-      '',
-      'FluxControls',
-      'width=360,height=700,resizable=yes'
-    )
-
+    const popout = window.open('', 'FluxControls', 'width=360,height=700')
     if (popout) {
       popout.document.write(`
         <!DOCTYPE html>
         <html>
-        <head>
-          <title>Flux Controls</title>
-          <style>
-            body {
-              margin: 0;
-              background: #121213;
-              color: white;
-              font-family: Inter, system-ui, sans-serif;
-              padding: 20px;
-            }
-            .message {
-              text-align: center;
-              padding: 40px;
-            }
-            h2 { color: #6366f1; }
-            p { color: #888; }
-          </style>
-        </head>
-        <body>
-          <div class="message">
-            <h2>Flux Controls</h2>
-            <p>Popout controls coming soon!</p>
-            <p>For now, use the main window controls.</p>
-          </div>
-        </body>
-        </html>
+        <head><title>Flux Controls</title>
+        <style>body{margin:0;background:#121213;color:white;font-family:Inter,system-ui;padding:20px;}
+        h2{color:#14B8A6;}p{color:#888;}</style></head>
+        <body><div style="text-align:center;padding:40px;">
+        <h2>Flux Controls</h2><p>Use the main window controls.</p></div></body></html>
       `)
     }
   }, [])
 
+  if (!mounted) return null
+
   return (
     <div className="fixed inset-0 overflow-hidden">
-      {/* Hidden video element for webcam stream */}
-      <video
-        ref={videoRef}
-        className="hidden"
-        playsInline
-        muted
-        autoPlay
-      />
+      {/* Hidden video */}
+      <video ref={videoRef} className="hidden" playsInline muted autoPlay />
 
-      {/* Main Canvas */}
+      {/* Canvas */}
       <Canvas
         videoRef={videoRef}
         physicsCanvasRef={physicsCanvasRef}
         onResize={handleCanvasResize}
       />
 
-      {/* Control Panel */}
+      {/* Controls */}
       <ControlPanel
         onStartWebcam={handleStartWebcam}
         onStopWebcam={handleStopWebcam}
@@ -221,12 +193,12 @@ export default function FluxApp() {
         webcamError={webcamError}
       />
 
-      {/* Calibration Overlay */}
+      {/* Calibration */}
       {showCalibration && (
         <CalibrationOverlay onClose={() => setShowCalibration(false)} />
       )}
 
-      {/* Loading indicator for OpenCV */}
+      {/* OpenCV Loading */}
       {!opencvReady && (
         <div className="fixed bottom-4 left-4 z-20">
           <div className="glass-panel rounded-xl px-4 py-2 flex items-center gap-3">
