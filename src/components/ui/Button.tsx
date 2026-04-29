@@ -27,36 +27,28 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     },
     ref
   ) => {
-    const variants = {
-      primary: 'btn-primary',
-      secondary: 'btn-secondary',
-      ghost: 'btn-ghost',
-      danger: 'btn text-red-400 border border-red-500/20 bg-red-500/10 hover:bg-red-500/20 hover:text-red-300',
+    const variants: Record<NonNullable<ButtonProps['variant']>, string> = {
+      primary: 'btn btn-primary',
+      secondary: 'btn btn-secondary',
+      ghost: 'btn btn-ghost',
+      danger: 'btn btn-danger',
     }
 
-    const sizes = {
-      sm: 'px-3 py-1.5 text-xs',
-      md: 'px-4 py-2.5 text-sm',
-      lg: 'px-6 py-3 text-base',
+    // Sizes override the default 36px height set in `.btn`.
+    const sizes: Record<NonNullable<ButtonProps['size']>, string> = {
+      sm: '!h-8 !px-3 !text-[10px]',
+      md: '',
+      lg: '!h-11 !px-6 !text-[12px]',
     }
 
     return (
       <button
         ref={ref}
-        className={cn(
-          variants[variant],
-          sizes[size],
-          'disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none',
-          className
-        )}
+        className={cn(variants[variant], sizes[size], className)}
         disabled={disabled || isLoading}
         {...props}
       >
-        {isLoading ? (
-          <Loader2 className="w-4 h-4 animate-spin" />
-        ) : (
-          leftIcon
-        )}
+        {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : leftIcon}
         {children}
         {!isLoading && rightIcon}
       </button>

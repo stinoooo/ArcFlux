@@ -1,61 +1,99 @@
 'use client'
 
 import { useFluxStore } from '@/store/useFluxStore'
-import { StatusBadge } from '@/components/ui'
-import { Activity, Cpu, Box } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 export function StatusPanel() {
   const { isStreaming, opencvReady, fps, detectedBlocks } = useFluxStore()
 
   return (
-    <div className="panel-section">
-      <div className="section-header">
-        <Activity className="w-3.5 h-3.5 text-emerald-400" />
-        Status
+    <section className="px-4 py-4 border-b border-[var(--line)]">
+      <div className="section-rule">
+        <span className="section-rule-num">01</span>
+        <span>Telemetry</span>
+        <span className="section-rule-line" />
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        <div className="p-3 rounded-lg bg-matte-100/30 border border-white/5">
-          <div className="flex items-center gap-2 mb-1">
-            <Activity className="w-3.5 h-3.5 text-gray-400" />
-            <span className="text-xs text-gray-400">Camera</span>
-          </div>
-          <StatusBadge
-            status={isStreaming ? 'online' : 'offline'}
-            label={isStreaming ? 'Streaming' : 'Stopped'}
-          />
-        </div>
+      <div className="grid grid-cols-2 gap-px bg-[var(--line)]">
+        <Readout
+          label="FPS"
+          value={fps.toFixed(0).padStart(3, '0')}
+          unit="hz"
+          state={fps > 20 ? 'on' : fps > 0 ? 'warn' : 'off'}
+        />
+        <Readout
+          label="Blocks"
+          value={detectedBlocks.toString().padStart(3, '0')}
+          unit="n"
+          state={detectedBlocks > 0 ? 'on' : 'off'}
+        />
+        <Readout
+          label="Camera"
+          value={isStreaming ? 'Live' : '—'}
+          unit="src"
+          state={isStreaming ? 'on' : 'off'}
+          variant="text"
+        />
+        <Readout
+          label="Optic"
+          value={opencvReady ? 'Rdy' : 'Wait'}
+          unit="cv"
+          state={opencvReady ? 'on' : 'warn'}
+          variant="text"
+        />
+      </div>
+    </section>
+  )
+}
 
-        <div className="p-3 rounded-lg bg-matte-100/30 border border-white/5">
-          <div className="flex items-center gap-2 mb-1">
-            <Cpu className="w-3.5 h-3.5 text-gray-400" />
-            <span className="text-xs text-gray-400">OpenCV</span>
-          </div>
-          <StatusBadge
-            status={opencvReady ? 'online' : 'processing'}
-            label={opencvReady ? 'Ready' : 'Loading'}
-          />
-        </div>
+function Readout({
+  label,
+  value,
+  unit,
+  state,
+  variant = 'number',
+}: {
+  label: string
+  value: string
+  unit: string
+  state: 'on' | 'warn' | 'off'
+  variant?: 'number' | 'text'
+}) {
+  const dotClass =
+    state === 'on'
+      ? 'text-signal led-pulse'
+      : state === 'warn'
+      ? 'text-warn led-pulse'
+      : 'text-[var(--text-quiet)]'
 
-        <div className="p-3 rounded-lg bg-matte-100/30 border border-white/5">
-          <div className="flex items-center gap-2 mb-1">
-            <Activity className="w-3.5 h-3.5 text-gray-400" />
-            <span className="text-xs text-gray-400">FPS</span>
-          </div>
-          <span className="text-lg font-mono font-bold text-gradient">
-            {fps.toFixed(1)}
-          </span>
-        </div>
+  const valueClass =
+    state === 'on'
+      ? 'text-signal glow-signal'
+      : state === 'warn'
+      ? 'text-warn glow-warn'
+      : 'text-[var(--text-faint)]'
 
-        <div className="p-3 rounded-lg bg-matte-100/30 border border-white/5">
-          <div className="flex items-center gap-2 mb-1">
-            <Box className="w-3.5 h-3.5 text-gray-400" />
-            <span className="text-xs text-gray-400">Blocks</span>
-          </div>
-          <span className="text-lg font-mono font-bold text-gradient">
-            {detectedBlocks}
-          </span>
-        </div>
+  return (
+    <div className="bg-[var(--ink-1)] px-3 py-2.5">
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-[9px] tracking-[0.18em] uppercase text-[var(--text-faint)]">
+          {label}
+        </span>
+        <span className={cn('led', dotClass)} />
+      </div>
+      <div className="flex items-baseline gap-1.5">
+        <span
+          className={cn(
+            'tnum',
+            valueClass,
+            variant === 'number' ? 'text-2xl font-bold' : 'text-base font-semibold'
+          )}
+        >
+          {value}
+        </span>
+        <span className="text-[9px] tracking-[0.18em] uppercase text-[var(--text-quiet)]">
+          {unit}
+        </span>
       </div>
     </div>
   )

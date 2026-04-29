@@ -22,9 +22,11 @@ export function ColorPanel() {
 
   return (
     <div className="panel-section">
-      <div className="section-header">
-        <Palette className="w-3.5 h-3.5 text-arc-secondary" />
-        Color Detection
+      <div className="section-rule">
+        <span className="section-rule-num">03</span>
+        <Palette className="w-3 h-3 text-signal" />
+        <span>Optics</span>
+        <span className="section-rule-line" />
       </div>
 
       <ColorPicker

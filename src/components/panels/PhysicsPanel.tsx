@@ -26,9 +26,11 @@ export function PhysicsPanel({ onClearBalls }: PhysicsPanelProps) {
 
   return (
     <div className="panel-section">
-      <div className="section-header">
-        <Sparkles className="w-3.5 h-3.5 text-arc-primary" />
-        Physics
+      <div className="section-rule">
+        <span className="section-rule-num">02</span>
+        <Sparkles className="w-3 h-3 text-signal" />
+        <span>Dynamics</span>
+        <span className="section-rule-line" />
       </div>
 
       <SegmentedControl<SpawnMode>

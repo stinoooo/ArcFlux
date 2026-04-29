@@ -1,7 +1,7 @@
 'use client'
 
 import { Component, ReactNode } from 'react'
-import { AlertTriangle, RefreshCw } from 'lucide-react'
+import { RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui'
 
 interface Props {
@@ -34,23 +34,24 @@ export class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="fixed inset-0 flex items-center justify-center bg-tornado p-4">
-          <div className="glass-panel rounded-2xl p-8 max-w-md text-center">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-500/10 flex items-center justify-center">
-              <AlertTriangle className="w-8 h-8 text-red-400" />
+        <div className="fixed inset-0 flex items-center justify-center p-4 font-mono">
+          <div className="panel reveal w-full max-w-md p-8">
+            <div className="text-[10px] tracking-[0.25em] uppercase text-[var(--danger)] mb-4 flex items-center gap-2">
+              <span className="led led-pulse text-[var(--danger)]" />
+              Fault · 5xx
             </div>
-            <h2 className="text-xl font-semibold text-white mb-2">
-              Something went wrong
+            <h2 className="display-serif text-[32px] leading-[1.05] text-[var(--text)] mb-2">
+              <span className="italic text-[var(--danger)]">/</span> System interrupted.
             </h2>
-            <p className="text-sm text-gray-400 mb-6">
-              {this.state.error?.message || 'An unexpected error occurred'}
+            <p className="text-[12px] leading-[1.7] text-[var(--text-dim)] mb-6 break-words">
+              {this.state.error?.message || 'An unexpected fault occurred. Restart the instrument.'}
             </p>
             <Button
               variant="primary"
               onClick={this.handleRetry}
-              leftIcon={<RefreshCw className="w-4 h-4" />}
+              leftIcon={<RefreshCw className="w-3.5 h-3.5" />}
             >
-              Try Again
+              Restart
             </Button>
           </div>
         </div>

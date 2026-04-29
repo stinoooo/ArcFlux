@@ -42,8 +42,7 @@ export function ColorPicker({
           <span className="control-value font-mono text-xs">{value.toUpperCase()}</span>
         </div>
       )}
-      <div className="flex items-center gap-2">
-        {/* Main color input */}
+      <div className="flex items-stretch gap-1.5">
         <div className="relative flex-1">
           <input
             type="color"
@@ -54,31 +53,34 @@ export function ColorPicker({
             className="color-picker"
           />
           <div
-            className="absolute inset-0 rounded-lg pointer-events-none"
+            className="absolute inset-0 pointer-events-none border border-[var(--line-bright)]"
             style={{
-              boxShadow: `0 0 20px ${value}40`,
+              borderRadius: '2px',
+              boxShadow: `0 0 16px ${value}55, inset 0 0 8px ${value}22`,
             }}
           />
         </div>
-
-        {/* Preset colors toggle */}
         <button
           onClick={() => setIsOpen(!isOpen)}
           className={cn(
-            'p-2.5 rounded-lg border transition-all',
+            'w-9 flex items-center justify-center border transition-colors',
             isOpen
-              ? 'border-arc-primary/50 bg-arc-primary/10 text-arc-primary'
-              : 'border-white/10 bg-tornado hover:border-white/20 text-gray-400'
+              ? 'border-signal/50 bg-[var(--signal-soft)] text-signal'
+              : 'border-[var(--line)] bg-[var(--ink-2)] hover:border-[var(--line-bright)] text-[var(--text-faint)] hover:text-[var(--text-dim)]'
           )}
+          style={{ borderRadius: '2px' }}
+          title="Presets"
         >
-          <Pipette className="w-4 h-4" />
+          <Pipette className="w-3.5 h-3.5" />
         </button>
       </div>
 
-      {/* Preset colors grid */}
       {isOpen && (
-        <div className="mt-2 p-2 rounded-lg bg-matte-100/50 border border-white/5">
-          <div className="grid grid-cols-8 gap-1.5">
+        <div
+          className="p-2 bg-[var(--ink-1)] border border-[var(--line)]"
+          style={{ borderRadius: '2px' }}
+        >
+          <div className="grid grid-cols-8 gap-1">
             {presetColors.map((color) => (
               <button
                 key={color}
@@ -87,10 +89,11 @@ export function ColorPicker({
                   setIsOpen(false)
                 }}
                 className={cn(
-                  'w-full aspect-square rounded-md transition-transform hover:scale-110',
-                  value === color && 'ring-2 ring-white ring-offset-1 ring-offset-matte'
+                  'w-full aspect-square transition-transform hover:scale-110',
+                  value === color &&
+                    'ring-1 ring-signal ring-offset-1 ring-offset-[var(--ink-1)]'
                 )}
-                style={{ backgroundColor: color }}
+                style={{ backgroundColor: color, borderRadius: '1px' }}
               />
             ))}
           </div>

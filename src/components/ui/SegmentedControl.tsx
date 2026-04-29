@@ -30,16 +30,19 @@ export function SegmentedControl<T extends string>({
           <span>{label}</span>
         </div>
       )}
-      <div className="flex p-1 rounded-xl bg-matte-100/50 border border-white/5">
+      <div
+        className="flex bg-[var(--ink-2)] border border-[var(--line)] divide-x divide-[var(--line)]"
+        style={{ borderRadius: '2px' }}
+      >
         {options.map((option) => (
           <button
             key={option.value}
             onClick={() => onChange(option.value)}
             className={cn(
-              'flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all',
+              'flex-1 flex items-center justify-center gap-2 h-8 text-[10px] tracking-[0.16em] uppercase font-semibold transition-colors',
               value === option.value
-                ? 'bg-gradient-to-r from-arc-primary to-arc-secondary text-white shadow-lg'
-                : 'text-gray-400 hover:text-gray-200'
+                ? 'bg-[var(--signal-soft)] text-signal glow-signal'
+                : 'text-[var(--text-faint)] hover:text-[var(--text-dim)] hover:bg-[var(--ink-3)]'
             )}
           >
             {option.icon}

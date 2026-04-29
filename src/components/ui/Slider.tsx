@@ -35,10 +35,12 @@ export function Slider({
       {(label || showValue) && (
         <div className="control-label">
           {label && <span>{label}</span>}
-          {showValue && <span className="control-value">{formatValue(value)}</span>}
+          {showValue && (
+            <span className="control-value tnum text-[11px]">{formatValue(value)}</span>
+          )}
         </div>
       )}
-      <div className="relative">
+      <div className="relative tick-track py-1">
         <input
           type="range"
           id={inputId}
@@ -48,9 +50,9 @@ export function Slider({
           step={step}
           value={value}
           onChange={(e) => onChange(Number(e.target.value))}
-          className="slider"
+          className="slider relative z-10"
           style={{
-            background: `linear-gradient(to right, rgba(20, 184, 166, 0.6) 0%, rgba(13, 148, 136, 0.8) ${percentage}%, rgba(35, 35, 35, 0.8) ${percentage}%, rgba(35, 35, 35, 0.8) 100%)`,
+            ['--fill' as string]: `${percentage}%`,
           }}
         />
       </div>

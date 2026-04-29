@@ -42,10 +42,7 @@ export function Select({
           name={selectId}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className={cn(
-            'input-base appearance-none pr-10 cursor-pointer',
-            'hover:border-white/20 transition-colors'
-          )}
+          className="input-chrome pr-9 cursor-pointer"
         >
           {placeholder && (
             <option value="" disabled>
@@ -58,7 +55,7 @@ export function Select({
             </option>
           ))}
         </select>
-        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--text-faint)] pointer-events-none" />
       </div>
     </div>
   )

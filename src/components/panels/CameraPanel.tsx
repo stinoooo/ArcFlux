@@ -47,13 +47,16 @@ export function CameraPanel({ onStartCalibration, error }: CameraPanelProps) {
 
   return (
     <div className="panel-section">
-      <div className="section-header">
-        <Camera className="w-3.5 h-3.5 text-arc-accent" />
-        Camera
+      <div className="section-rule">
+        <span className="section-rule-num">04</span>
+        <Camera className="w-3 h-3 text-signal" />
+        <span>Sensor</span>
+        <span className="section-rule-line" />
       </div>
 
       {error && (
-        <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+        <div className="px-3 py-2 border border-[rgba(244,91,91,0.3)] bg-[rgba(244,91,91,0.06)] text-[10px] leading-tight text-[var(--danger)] tracking-[0.06em]">
+          <span className="tracking-[0.18em] uppercase mr-2">Err·</span>
           {error}
         </div>
       )}
@@ -70,15 +73,18 @@ export function CameraPanel({ onStartCalibration, error }: CameraPanelProps) {
         <div className="control-label">
           <span>Quality</span>
         </div>
-        <div className="flex gap-1.5">
+        <div
+          className="flex bg-[var(--ink-2)] border border-[var(--line)] divide-x divide-[var(--line)]"
+          style={{ borderRadius: '2px' }}
+        >
           {qualityOptions.map((opt) => (
             <button
               key={opt.value}
               onClick={() => setWebcamQuality(opt.value)}
-              className={`flex-1 py-2 px-2 rounded-lg text-xs font-medium transition-all ${
+              className={`flex-1 h-8 text-[10px] tracking-[0.14em] uppercase font-semibold transition-colors ${
                 webcamQuality === opt.value
-                  ? 'bg-gradient-to-r from-arc-primary to-arc-secondary text-white'
-                  : 'bg-matte-100/50 text-gray-400 hover:text-gray-200'
+                  ? 'bg-[var(--signal-soft)] text-signal glow-signal'
+                  : 'text-[var(--text-faint)] hover:text-[var(--text-dim)] hover:bg-[var(--ink-3)]'
               }`}
             >
               {opt.label}
@@ -91,15 +97,18 @@ export function CameraPanel({ onStartCalibration, error }: CameraPanelProps) {
         <div className="control-label">
           <span>Rotation</span>
         </div>
-        <div className="flex gap-1.5">
+        <div
+          className="flex bg-[var(--ink-2)] border border-[var(--line)] divide-x divide-[var(--line)]"
+          style={{ borderRadius: '2px' }}
+        >
           {rotationOptions.map((opt) => (
             <button
               key={opt.value}
               onClick={() => setVideoRotation(Number(opt.value))}
-              className={`flex-1 py-2 px-2 rounded-lg text-xs font-medium transition-all ${
+              className={`flex-1 h-8 text-[10px] tracking-[0.14em] uppercase font-semibold transition-colors ${
                 videoRotation === Number(opt.value)
-                  ? 'bg-gradient-to-r from-arc-primary to-arc-secondary text-white'
-                  : 'bg-matte-100/50 text-gray-400 hover:text-gray-200'
+                  ? 'bg-[var(--signal-soft)] text-signal glow-signal'
+                  : 'text-[var(--text-faint)] hover:text-[var(--text-dim)] hover:bg-[var(--ink-3)]'
               }`}
             >
               {opt.label}

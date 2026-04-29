@@ -12,7 +12,7 @@ declare global {
 }
 
 interface OpenCVModule {
-  Mat: new () => CVMat
+  Mat: new (rows?: number, cols?: number, type?: number) => CVMat
   MatVector: new () => CVMatVector
   Size: new (width: number, height: number) => CVSize
   Scalar: new (v0: number, v1: number, v2: number, v3?: number) => CVScalar
@@ -30,12 +30,15 @@ interface OpenCVModule {
   matFromArray: (rows: number, cols: number, type: number, array: number[]) => CVMat
   bitwise_or: (src1: CVMat, src2: CVMat, dst: CVMat) => void
   CV_8UC1: number
+  CV_8UC4: number
   CV_32FC2: number
   COLOR_RGBA2RGB: number
   COLOR_RGB2HSV: number
+  COLOR_RGBA2HSV_FULL: number
   MORPH_OPEN: number
   MORPH_CLOSE: number
   MORPH_ELLIPSE: number
+  MORPH_RECT: number
   RETR_EXTERNAL: number
   CHAIN_APPROX_SIMPLE: number
 }
@@ -86,12 +89,27 @@ interface UseOpenCVResult {
   ) => DetectedBlock[]
 }
 
-// Store the resolved cv module
 let cvModule: OpenCVModule | null = null
+
+// Process at a fixed small resolution for speed. The full-res webcam is still
+// used for display; only color detection runs on the downscaled buffer.
+const PROC_WIDTH = 480
+
+interface MatPool {
+  src: CVMat
+  hsv: CVMat
+  mask: CVMat
+  maskWrap: CVMat
+  kernel: CVMat
+  hierarchy: CVMat
+  width: number
+  height: number
+}
 
 export function useOpenCV(): UseOpenCVResult {
   const [isReady, setIsReady] = useState(false)
   const initRef = useRef(false)
+  const poolRef = useRef<MatPool | null>(null)
 
   const {
     targetColor,
@@ -113,7 +131,6 @@ export function useOpenCV(): UseOpenCVResult {
     initRef.current = true
 
     const initOpenCV = async () => {
-      // Wait for cv to be defined
       let attempts = 0
       while (!window.cv && attempts < 100) {
         await new Promise(r => setTimeout(r, 100))
@@ -125,23 +142,12 @@ export function useOpenCV(): UseOpenCVResult {
         return
       }
 
-      console.log('cv object found, type:', typeof window.cv)
-
       try {
-        // OpenCV.js 4.x: cv is a function that returns a promise
         if (typeof window.cv === 'function') {
-          console.log('Initializing OpenCV (function mode)...')
           cvModule = await (window.cv as () => Promise<OpenCVModule>)()
-          console.log('OpenCV initialized!')
-        }
-        // Older versions: cv is already the module
-        else if (typeof (window.cv as OpenCVModule).Mat === 'function') {
-          console.log('OpenCV already initialized (direct mode)')
+        } else if (typeof (window.cv as OpenCVModule).Mat === 'function') {
           cvModule = window.cv as OpenCVModule
-        }
-        // cv exists but Mat doesn't - wait for it
-        else {
-          console.log('Waiting for OpenCV Mat to be available...')
+        } else {
           let matAttempts = 0
           while (!(window.cv as OpenCVModule).Mat && matAttempts < 100) {
             await new Promise(r => setTimeout(r, 100))
@@ -149,14 +155,12 @@ export function useOpenCV(): UseOpenCVResult {
           }
           if ((window.cv as OpenCVModule).Mat) {
             cvModule = window.cv as OpenCVModule
-            console.log('OpenCV ready after waiting for Mat')
           }
         }
 
         if (cvModule) {
           setIsReady(true)
           setOpencvReady(true)
-          console.log('OpenCV is ready to use!')
         } else {
           console.error('Failed to initialize OpenCV module')
         }
@@ -166,6 +170,19 @@ export function useOpenCV(): UseOpenCVResult {
     }
 
     initOpenCV()
+
+    return () => {
+      const pool = poolRef.current
+      if (pool) {
+        pool.src.delete()
+        pool.hsv.delete()
+        pool.mask.delete()
+        pool.maskWrap.delete()
+        pool.kernel.delete()
+        pool.hierarchy.delete()
+        poolRef.current = null
+      }
+    }
   }, [setOpencvReady])
 
   const processFrame = useCallback(
@@ -175,119 +192,126 @@ export function useOpenCV(): UseOpenCVResult {
       outputCanvas: HTMLCanvasElement
     ): DetectedBlock[] => {
       if (!isReady || !cvModule) return []
+      if (!video.videoWidth || !video.videoHeight) return []
 
       const cv = cvModule
-      const detectedBlocks: DetectedBlock[] = []
+      const detected: DetectedBlock[] = []
 
-      let src: CVMat | null = null
-      let rgb: CVMat | null = null
-      let hsv: CVMat | null = null
-      let mask: CVMat | null = null
-      let mask2: CVMat | null = null
-      let kernel: CVMat | null = null
-      let hierarchy: CVMat | null = null
-      let contours: CVMatVector | null = null
-      let lowerBound: CVMat | null = null
-      let upperBound: CVMat | null = null
+      // Compute target processing size — fixed width, aspect-correct height.
+      const aspect = video.videoWidth / video.videoHeight
+      const procW = PROC_WIDTH
+      const procH = Math.max(1, Math.round(procW / aspect))
 
-      try {
-        const ctx = inputCanvas.getContext('2d', { willReadFrequently: true })
-        if (!ctx) return []
+      // Resize the hidden canvas only when needed.
+      if (inputCanvas.width !== procW) inputCanvas.width = procW
+      if (inputCanvas.height !== procH) inputCanvas.height = procH
 
-        inputCanvas.width = video.videoWidth || 640
-        inputCanvas.height = video.videoHeight || 480
-        ctx.drawImage(video, 0, 0)
+      const ctx = inputCanvas.getContext('2d', { willReadFrequently: true })
+      if (!ctx) return []
 
-        src = cv.imread(inputCanvas)
-        rgb = new cv.Mat()
-        hsv = new cv.Mat()
-        mask = new cv.Mat()
-
-        cv.cvtColor(src, rgb, cv.COLOR_RGBA2RGB)
-        cv.cvtColor(rgb, hsv, cv.COLOR_RGB2HSV)
-
-        const targetHsv = hexToHsv(targetColor)
-        const hLow = targetHsv.h - colorTolerance
-        const hHigh = targetHsv.h + colorTolerance
-
-        lowerBound = cv.matFromArray(1, 3, cv.CV_8UC1, [
-          Math.max(0, hLow),
-          saturationMin,
-          valueMin,
-        ])
-        upperBound = cv.matFromArray(1, 3, cv.CV_8UC1, [
-          Math.min(179, hHigh),
-          255,
-          255,
-        ])
-
-        cv.inRange(hsv, lowerBound, upperBound, mask)
-
-        // Handle hue wrap-around for red colors
-        if (hLow < 0 || hHigh > 179) {
-          mask2 = new cv.Mat()
-          if (hLow < 0) {
-            const lb2 = cv.matFromArray(1, 3, cv.CV_8UC1, [179 + hLow, saturationMin, valueMin])
-            const ub2 = cv.matFromArray(1, 3, cv.CV_8UC1, [179, 255, 255])
-            cv.inRange(hsv, lb2, ub2, mask2)
-            lb2.delete()
-            ub2.delete()
-          } else if (hHigh > 179) {
-            const lb2 = cv.matFromArray(1, 3, cv.CV_8UC1, [0, saturationMin, valueMin])
-            const ub2 = cv.matFromArray(1, 3, cv.CV_8UC1, [hHigh - 179, 255, 255])
-            cv.inRange(hsv, lb2, ub2, mask2)
-            lb2.delete()
-            ub2.delete()
-          }
-          const combined = new cv.Mat()
-          cv.bitwise_or(mask, mask2, combined)
-          mask.delete()
-          mask = combined
+      // Initialize / resize persistent Mat pool.
+      let pool = poolRef.current
+      if (!pool || pool.width !== procW || pool.height !== procH) {
+        if (pool) {
+          pool.src.delete()
+          pool.hsv.delete()
+          pool.mask.delete()
+          pool.maskWrap.delete()
+          pool.kernel.delete()
+          pool.hierarchy.delete()
         }
-
-        kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, new cv.Size(5, 5))
-        cv.morphologyEx(mask, mask, cv.MORPH_OPEN, kernel)
-        cv.morphologyEx(mask, mask, cv.MORPH_CLOSE, kernel)
-
-        contours = new cv.MatVector()
-        hierarchy = new cv.Mat()
-        cv.findContours(mask, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
-
-        const minArea = 500
-        for (let i = 0; i < contours.size(); i++) {
-          const contour = contours.get(i)
-          const area = cv.contourArea(contour)
-
-          if (area >= minArea) {
-            const rect = cv.boundingRect(contour)
-            const scaleX = outputCanvas.width / inputCanvas.width
-            const scaleY = outputCanvas.height / inputCanvas.height
-
-            detectedBlocks.push({
-              x: rect.x * scaleX,
-              y: rect.y * scaleY,
-              width: rect.width * scaleX,
-              height: rect.height * scaleY,
-              area: area,
-            })
-          }
+        pool = {
+          src: new cv.Mat(procH, procW, cv.CV_8UC4),
+          hsv: new cv.Mat(),
+          mask: new cv.Mat(),
+          maskWrap: new cv.Mat(),
+          // 3x3 kernel is much cheaper than 5x5 and visually equivalent at this scale.
+          kernel: cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(3, 3)),
+          hierarchy: new cv.Mat(),
+          width: procW,
+          height: procH,
         }
-      } catch (error) {
-        console.error('OpenCV processing error:', error)
-      } finally {
-        src?.delete()
-        rgb?.delete()
-        hsv?.delete()
-        mask?.delete()
-        mask2?.delete()
-        kernel?.delete()
-        hierarchy?.delete()
-        contours?.delete()
-        lowerBound?.delete()
-        upperBound?.delete()
+        poolRef.current = pool
       }
 
-      return detectedBlocks
+      // Draw the video into the small canvas. drawImage handles the downscale on the GPU.
+      ctx.drawImage(video, 0, 0, procW, procH)
+      const imageData = ctx.getImageData(0, 0, procW, procH)
+      pool.src.data.set(imageData.data)
+
+      // RGBA → HSV in one step. We don't need the intermediate RGB Mat.
+      cv.cvtColor(pool.src, pool.hsv, cv.COLOR_RGBA2RGB)
+      cv.cvtColor(pool.hsv, pool.hsv, cv.COLOR_RGB2HSV)
+
+      const targetHsv = hexToHsv(targetColor)
+      const hLow = targetHsv.h - colorTolerance
+      const hHigh = targetHsv.h + colorTolerance
+
+      // Allocate the small bound Mats inline; they are 1x3, allocation is cheap.
+      const lower = cv.matFromArray(1, 3, cv.CV_8UC1, [
+        Math.max(0, hLow),
+        saturationMin,
+        valueMin,
+      ])
+      const upper = cv.matFromArray(1, 3, cv.CV_8UC1, [
+        Math.min(179, hHigh),
+        255,
+        255,
+      ])
+      cv.inRange(pool.hsv, lower, upper, pool.mask)
+      lower.delete()
+      upper.delete()
+
+      // Hue wrap-around (red).
+      if (hLow < 0 || hHigh > 179) {
+        const lo = hLow < 0 ? 179 + hLow : 0
+        const hi = hHigh > 179 ? hHigh - 179 : hHigh
+        const lb2 = cv.matFromArray(1, 3, cv.CV_8UC1, [lo, saturationMin, valueMin])
+        const ub2 = cv.matFromArray(1, 3, cv.CV_8UC1, [hi, 255, 255])
+        cv.inRange(pool.hsv, lb2, ub2, pool.maskWrap)
+        cv.bitwise_or(pool.mask, pool.maskWrap, pool.mask)
+        lb2.delete()
+        ub2.delete()
+      }
+
+      // One open + close pass on the small mask. Cheap at this resolution.
+      cv.morphologyEx(pool.mask, pool.mask, cv.MORPH_OPEN, pool.kernel)
+      cv.morphologyEx(pool.mask, pool.mask, cv.MORPH_CLOSE, pool.kernel)
+
+      const contours = new cv.MatVector()
+      cv.findContours(
+        pool.mask,
+        contours,
+        pool.hierarchy,
+        cv.RETR_EXTERNAL,
+        cv.CHAIN_APPROX_SIMPLE
+      )
+
+      // Min area scaled to the processing resolution. 500 px² on a 480-wide buffer
+      // corresponds to a ~22x22 patch — same intent as the legacy 500 on 400-wide.
+      const minArea = 200
+      const scaleX = outputCanvas.width / procW
+      const scaleY = outputCanvas.height / procH
+      const total = contours.size()
+
+      for (let i = 0; i < total; i++) {
+        const contour = contours.get(i)
+        const area = cv.contourArea(contour)
+        if (area >= minArea) {
+          const rect = cv.boundingRect(contour)
+          detected.push({
+            x: rect.x * scaleX,
+            y: rect.y * scaleY,
+            width: rect.width * scaleX,
+            height: rect.height * scaleY,
+            area,
+          })
+        }
+        contour.delete()
+      }
+      contours.delete()
+
+      return detected
     },
     [isReady, targetColor, colorTolerance, saturationMin, valueMin]
   )

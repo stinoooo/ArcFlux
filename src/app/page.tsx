@@ -2,26 +2,28 @@
 
 import { useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
-import { Loader2 } from 'lucide-react'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 
-// Dynamic import to avoid SSR issues with canvas/opencv
 const FluxApp = dynamic(() => import('@/components/FluxApp'), {
   ssr: false,
   loading: () => (
-    <div className="fixed inset-0 flex items-center justify-center bg-tornado">
-      <div className="flex flex-col items-center gap-4">
-        <div className="relative">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-arc-primary to-arc-secondary flex items-center justify-center">
-            <svg className="w-8 h-8 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-            </svg>
-          </div>
-          <div className="absolute inset-0 rounded-2xl pulse-ring" />
+    <div className="fixed inset-0 flex items-center justify-center font-mono">
+      <div className="flex flex-col items-center gap-5">
+        <div className="brand-mark w-12 h-12">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/arcnode.svg"
+            alt="Arcnode"
+            className="w-full h-full object-contain"
+            style={{
+              filter:
+                'invert(78%) sepia(60%) saturate(420%) hue-rotate(135deg) brightness(105%) drop-shadow(0 0 8px var(--signal-glow))',
+            }}
+          />
         </div>
-        <div className="flex items-center gap-2 text-gray-400">
-          <Loader2 className="w-4 h-4 animate-spin" />
-          <span className="text-sm font-medium">Loading Flux...</span>
+        <div className="flex items-center gap-2.5 text-[10px] tracking-[0.3em] uppercase text-[var(--text-faint)]">
+          <span className="led led-pulse text-warn" />
+          Booting · Flux
         </div>
       </div>
     </div>
@@ -30,14 +32,8 @@ const FluxApp = dynamic(() => import('@/components/FluxApp'), {
 
 export default function Home() {
   const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  if (!mounted) {
-    return null
-  }
+  useEffect(() => { setMounted(true) }, [])
+  if (!mounted) return null
 
   return (
     <ErrorBoundary>

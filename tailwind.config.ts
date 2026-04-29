@@ -9,55 +9,62 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Matte black palette - no pure blacks
-        'matte': {
-          DEFAULT: '#28282B',
-          50: '#3d3d42',
-          100: '#28282B',
-          200: '#232326',
-          300: '#1e1e21',
-          400: '#19191c',
-          500: '#141417',
-          600: '#0f0f12',
+        // Surface — chassis to raised key
+        ink: {
+          0: '#0B0B0C',
+          1: '#101012',
+          2: '#15151A',
+          3: '#1C1C22',
+          4: '#2A2A32',
         },
-        'walnut': '#1B1813',
-        'tornado': '#121213',
-        'night': '#232323',
-        'stout': '#0F0B0A',
-        // Accent colors - Teal/Cyan theme
-        'arc': {
-          primary: '#14B8A6',    // teal-500
-          secondary: '#0D9488',  // teal-600
-          accent: '#2DD4BF',     // teal-400
-          glow: '#5EEAD4',       // teal-300
-          deep: '#0F766E',       // teal-700
+        // Signal — phosphor cyan
+        signal: {
+          DEFAULT: '#2DE3D4',
+          deep: '#14B8A6',
+          bright: '#5EEAD4',
         },
+        // Warning amber — for calibration & alerts
+        warn: {
+          DEFAULT: '#F5A524',
+        },
+        // Legacy aliases kept so existing components don't break during migration
+        arc: {
+          primary: '#2DE3D4',
+          secondary: '#14B8A6',
+          accent: '#5EEAD4',
+          glow: '#5EEAD4',
+          deep: '#0F766E',
+        },
+        matte: {
+          DEFAULT: '#15151A',
+          50: '#2A2A32',
+          100: '#1C1C22',
+          200: '#15151A',
+          300: '#101012',
+          400: '#0B0B0C',
+          500: '#08080A',
+          600: '#050506',
+        },
+        walnut: '#101012',
+        tornado: '#0B0B0C',
+        night: '#15151A',
+        stout: '#08080A',
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        mono: ['JetBrains Mono', 'monospace'],
+        display: ['var(--font-display)', 'Georgia', 'serif'],
+        mono: ['var(--font-mono)', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+        sans: ['var(--font-mono)', 'ui-monospace', 'monospace'],
       },
-      backdropBlur: {
-        xs: '2px',
-      },
-      animation: {
-        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-        'glow': 'glow 2s ease-in-out infinite alternate',
-        'float': 'float 6s ease-in-out infinite',
-      },
-      keyframes: {
-        glow: {
-          '0%': { boxShadow: '0 0 5px rgba(20, 184, 166, 0.5), 0 0 20px rgba(20, 184, 166, 0.3)' },
-          '100%': { boxShadow: '0 0 10px rgba(13, 148, 136, 0.6), 0 0 40px rgba(13, 148, 136, 0.4)' },
-        },
-        float: {
-          '0%, 100%': { transform: 'translateY(0)' },
-          '50%': { transform: 'translateY(-10px)' },
-        },
+      letterSpacing: {
+        widest: '0.2em',
       },
       boxShadow: {
-        'inner-glow': 'inset 0 0 20px rgba(20, 184, 166, 0.1)',
-        'arc': '0 0 30px rgba(20, 184, 166, 0.3)',
+        'signal-glow': '0 0 20px rgba(45, 227, 212, 0.35)',
+        'panel-deep': '0 30px 60px -20px rgba(0, 0, 0, 0.8)',
+      },
+      animation: {
+        'led-pulse': 'led-pulse 1.6s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'reveal': 'reveal 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both',
       },
     },
   },
