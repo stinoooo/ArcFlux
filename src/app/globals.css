@@ -598,7 +598,6 @@
   .reveal-2 { animation-delay: 0.12s; }
   .reveal-3 { animation-delay: 0.20s; }
   .reveal-4 { animation-delay: 0.28s; }
-}
 
   /* ── Legacy aliases — keep older panel internals rendering ─── */
   .panel-section {
