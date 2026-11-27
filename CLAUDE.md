@@ -13,7 +13,7 @@ npm run lint     # next lint (eslint flat config, extends next/core-web-vitals)
 
 There is no test suite. There are no separate type-check scripts; rely on `next build` or `npx tsc --noEmit` (after `npm install`) for type errors.
 
-Deployed to `flux.arcnode.dev` via Vercel — `vercel.json` declares Next.js framework + security headers (`X-Content-Type-Options`, `X-Frame-Options: DENY`, `X-XSS-Protection`).
+Deployed to `flux.arcnode.dev` via Vercel — `vercel.json` only declares the Next.js framework. All response headers (COOP/COEP, HSTS, `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy` with the camera allowed for this origin) live in `headers()` in `next.config.js`, so `next start` serves the same headers as production.
 
 ## Architecture
 
